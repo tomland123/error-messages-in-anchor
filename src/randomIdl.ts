@@ -49,7 +49,14 @@ export const RandomIdl = {
       },
     },
   ],
+  errors: [
+    {
+      code: 300,
+      name: "VideoMessage",
+      msg: "error message for a video",
+    },
+  ],
   metadata: {
-    address: "CrYj35HAPKBxEKw5aV56FSfb4bBE1raDLPMWcnyba1MM",
+    address: "4RotXiba6Tvvh1DAvcxPhyrccN9T2zvU6T6uxTT3hi16",
   },
 };

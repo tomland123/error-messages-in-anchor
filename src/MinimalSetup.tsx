@@ -6,6 +6,16 @@ import { RandomIdl } from "./randomIdl";
 import { PublicKey, Connection } from "@solana/web3.js";
 const anchor = require("@project-serum/anchor");
 
+export const asyncWrapper = async (asyncFunction, params, opts) => {
+  try {
+    const data = await asyncFunction(...params);
+    return [null, data];
+  } catch (e) {
+    console.error(opts?.program?._idl?.name, e.code, e.msg);
+    return [e, null];
+  }
+};
+
 const MinimalSetup = () => {
   const { wallet, connected } = useWallet();
   const [program, setProgram] = useState({});
@@ -16,31 +26,37 @@ const MinimalSetup = () => {
     const myAccount = anchor.web3.Keypair.generate();
     const { provider } = program;
 
-    await program.rpc.initialize(new anchor.BN(1234), {
-      accounts: {
-        myAccount: myAccount.publicKey,
-        rent: anchor.web3.SYSVAR_RENT_PUBKEY,
-      },
-      signers: [myAccount],
-      instructions: [
-        anchor.web3.SystemProgram.createAccount({
-          fromPubkey: provider.wallet.publicKey,
-          newAccountPubkey: myAccount.publicKey,
-          space: 8 + 8, // Add 8 for the account discriminator.
-          lamports: await provider.connection.getMinimumBalanceForRentExemption(
-            8 + 8,
-          ),
-          programId: program.programId,
-        }),
+    await asyncWrapper(
+      program.rpc.initialize,
+      [
+        new anchor.BN(1234),
+        {
+          accounts: {
+            myAccount: myAccount.publicKey,
+            rent: anchor.web3.SYSVAR_RENT_PUBKEY,
+          },
+          signers: [myAccount],
+          instructions: [
+            anchor.web3.SystemProgram.createAccount({
+              fromPubkey: provider.wallet.publicKey,
+              newAccountPubkey: myAccount.publicKey,
+              space: 8 + 8, // Add 8 for the account discriminator.
+              lamports:
+                await provider.connection.getMinimumBalanceForRentExemption(
+                  8 + 8,
+                ),
+              programId: program.programId,
+            }),
+          ],
+        },
       ],
-    });
+      { program },
+    );
 
     setKeyFromAccount(myAccount.publicKey);
   };
 
   const UpdateAccount = async () => {
-    const { provider } = program;
-
     const account = await program.account.myAccount.fetch(keyFromAccount);
     console.log(account, "before");
 
@@ -64,15 +80,9 @@ const MinimalSetup = () => {
       commitment: "processed",
     });
 
-    const provider = new anchor.Provider(
-      connection,
-      {
-        publicKey: "7oyrzFtYfb8RYGBJ3YgosEXGFe3ezR9NpgeLCnCpcSRX",
-      },
-      {
-        commitment: "processed",
-      },
-    );
+    const provider = new anchor.Provider(connection, wallet, {
+      commitment: "processed",
+    });
 
     const newProgram = new anchor.Program(RandomIdl, programId, provider);
 
